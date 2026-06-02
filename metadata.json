@@ -1,0 +1,8 @@
+{
+  "name": "Quản lý Công việc Marketing",
+  "description": "Hệ thống quản lý công việc, tiến độ, hiệu suất nhân sự và hóa đơn chi phí cho phòng Marketing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
