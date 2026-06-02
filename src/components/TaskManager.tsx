@@ -85,7 +85,16 @@ export default function TaskManager({
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
 
-  const isRestrictedEdit = isEditOpen && !permissions.tasks_edit_all;
+  const selectedTask = useMemo(() => {
+    return tasks.find(t => t.id === selectedTaskId);
+  }, [tasks, selectedTaskId]);
+
+  const isRestrictedEdit = useMemo(() => {
+    if (!isEditOpen) return false;
+    if (permissions.tasks_edit_all) return false;
+    if (selectedTask && selectedTask.createdBy === currentUser.id) return false;
+    return true;
+  }, [isEditOpen, permissions.tasks_edit_all, selectedTask, currentUser.id]);
 
   // Clipboard copy state
   const [copiedTaskId, setCopiedTaskId] = useState<string | null>(null);
@@ -519,12 +528,19 @@ export default function TaskManager({
               </button>
             ) : (
               <button
-                disabled
-                className="inline-flex items-center gap-1.5 px-4.5 py-3 rounded-xl bg-slate-100 text-slate-400 text-xs font-bold shadow-xs transition cursor-not-allowed opacity-70"
-                title="Tài khoản của bạn không có quyền giao việc mới"
+                onClick={() => {
+                  resetForm();
+                  setAssigneeId(currentUser.id);
+                  if (currentUser.division) {
+                    setDivision(currentUser.division);
+                  }
+                  setIsAddOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-4.5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition cursor-pointer"
+                id="create_own_plan_btn"
               >
-                <Lock className="w-3.5 h-3.5" />
-                Giao việc mới
+                <PlusCircle className="w-4 h-4" />
+                Viết kế hoạch cá nhân
               </button>
             )}
           </div>
@@ -887,7 +903,7 @@ export default function TaskManager({
                     </button>
 
                     {(() => {
-                      const canEdit = permissions.tasks_edit_all || task.assigneeId === currentUser.id;
+                      const canEdit = permissions.tasks_edit_all || task.assigneeId === currentUser.id || task.createdBy === currentUser.id;
                       return (
                         <button 
                           disabled={!canEdit}
@@ -897,7 +913,7 @@ export default function TaskManager({
                               ? 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100 cursor-pointer' 
                               : 'text-slate-400 bg-slate-100 cursor-not-allowed opacity-75'
                           }`}
-                          title={canEdit ? (permissions.tasks_edit_all ? "Sửa toàn bộ thông tin" : "Cập nhật tiến độ việc được giao") : "Chỉ người phụ trách hoặc Quản lý được thao tác"}
+                          title={canEdit ? (permissions.tasks_edit_all ? "Sửa toàn bộ thông tin" : "Cập nhật tiến độ hoặc kế hoạch tự viết") : "Chỉ người phụ trách hoặc Quản lý được thao tác"}
                         >
                           {canEdit ? <Edit className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
                           Thao tác
@@ -905,21 +921,26 @@ export default function TaskManager({
                       );
                     })()}
 
-                    <button 
-                      disabled={!permissions.tasks_delete}
-                      onClick={() => {
-                        setTaskToDelete(task);
-                        setIsDeleteConfirmOpen(true);
-                      }}
-                      className={`p-2 rounded transition ${
-                        permissions.tasks_delete 
-                          ? 'bg-red-50 hover:bg-red-100 text-red-650 text-red-600 cursor-pointer' 
-                          : 'bg-slate-150 bg-slate-100 text-slate-300 cursor-not-allowed opacity-50'
-                      }`}
-                      title={permissions.tasks_delete ? "Xóa công việc" : "Yêu cầu quyền xóa công việc"}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {(() => {
+                      const canDelete = permissions.tasks_delete || task.createdBy === currentUser.id;
+                      return (
+                        <button 
+                          disabled={!canDelete}
+                          onClick={() => {
+                            setTaskToDelete(task);
+                            setIsDeleteConfirmOpen(true);
+                          }}
+                          className={`p-2 rounded transition ${
+                            canDelete 
+                              ? 'bg-red-50 hover:bg-red-100 text-red-600 cursor-pointer' 
+                              : 'bg-slate-100 text-slate-300 cursor-not-allowed opacity-50'
+                          }`}
+                          title={canDelete ? "Xóa công việc" : "Chỉ người lập kế hoạch hoặc Quản trị viên mới được xóa"}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -962,6 +983,12 @@ export default function TaskManager({
                   onDrop={(e) => handleDropOnDate(e, dateString)}
                   onDoubleClick={() => {
                     resetForm();
+                    if (!permissions.tasks_create) {
+                      setAssigneeId(currentUser.id);
+                      if (currentUser.division) {
+                        setDivision(currentUser.division);
+                      }
+                    }
                     setDeadline(dateString);
                     setIsAddOpen(true);
                   }}
@@ -1138,10 +1165,12 @@ export default function TaskManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-slate-700 font-semibold block">Người phụ trách (Assignee)</label>
+                  <label className="text-slate-700 font-semibold block">
+                    Người phụ trách { !permissions.tasks_create && <span className="text-emerald-600 text-[10px] font-bold">(Kế hoạch cá nhân)</span> }
+                  </label>
                   <select 
                     required
-                    disabled={isRestrictedEdit}
+                    disabled={isRestrictedEdit || !permissions.tasks_create}
                     value={assigneeId} 
                     onChange={(e) => setAssigneeId(e.target.value)}
                     className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-950 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"

@@ -25,6 +25,7 @@ export interface Task {
   attachments: Attachment[];
   createdAt: string;
   completedAt?: string;
+  createdBy?: string; // ID of the member who created this task
 }
 
 export type SystemRole = 'Admin' | 'Manager' | 'Member';

@@ -180,6 +180,17 @@ export default function App() {
     triggerNotification(`Đã tạo phân ban thành công: "${trimmed}"`);
   };
 
+  const handleDeleteDivision = (divToDelete: string) => {
+    const updated = divisions.filter(d => d !== divToDelete);
+    saveDivisions(updated);
+    triggerNotification(`Đã xóa phân ban: "${divToDelete}"`);
+  };
+
+  const handleClearAllDivisions = () => {
+    saveDivisions([]);
+    triggerNotification(`Đã xóa tất cả phân ban thành công!`);
+  };
+
   // Initialize data from localStorage with reliable fallback to populated mockData
   useEffect(() => {
     const cachedMembers = localStorage.getItem('mkt_members');
@@ -250,11 +261,17 @@ export default function App() {
     const newTask: Task = {
       ...newTaskFields,
       id: `task-${Date.now()}`,
-      createdAt: new Date().toISOString().split('T')[0]
+      createdAt: new Date().toISOString().split('T')[0],
+      createdBy: newTaskFields.createdBy || currentUser.id
     };
     const updated = [newTask, ...tasks];
     saveTasks(updated);
-    triggerNotification(`Đã giao công việc mới: "${newTask.title}"`);
+    const isSelfCreated = newTask.createdBy === newTask.assigneeId;
+    if (isSelfCreated) {
+      triggerNotification(`Đã tạo kế hoạch cá nhân: "${newTask.title}"`);
+    } else {
+      triggerNotification(`Đã giao công việc mới: "${newTask.title}"`);
+    }
 
     // Gửi thông báo về tài khoản của các thành viên trong phòng hoặc người được phân công trực tiếp
     const assigneeName = members.find(m => m.id === newTask.assigneeId)?.name || 'Thành viên mới';
@@ -264,10 +281,15 @@ export default function App() {
       // Nhận thông báo nếu thuộc phòng ban (division) của công việc hoặc nhận trực tiếp công việc đó
       if (m.division === newTask.division || m.id === newTask.assigneeId) {
         const isDirectAssignee = m.id === newTask.assigneeId;
-        const notifTitle = isDirectAssignee ? '📬 Bạn được giao công việc mới' : '📢 Phòng của bạn có công việc mới';
+        const notifTitle = isDirectAssignee 
+          ? (isSelfCreated ? '📝 Bạn vừa tự lập một kế hoạch' : '📬 Bạn được giao công việc mới') 
+          : '📢 Phòng của bạn có công việc mới';
+        
         const notifMsg = isDirectAssignee
-          ? `Bạn đã được giao công việc "${newTask.title}" bởi ${currentUser.name}. Phòng ban: ${newTask.division}. Hạn chót: ${newTask.deadline}.`
-          : `${currentUser.name} đã giao công việc "${newTask.title}" cho ${assigneeName} thuộc phòng ban ${newTask.division} của bạn. Hạn chót: ${newTask.deadline}.`;
+          ? (isSelfCreated 
+              ? `Bạn vừa tự lập kế hoạch công việc: "${newTask.title}". Bộ phận: ${newTask.division}. Hạn chót: ${newTask.deadline}.`
+              : `Bạn đã được giao công việc "${newTask.title}" bởi ${currentUser.name}. Phòng ban: ${newTask.division}. Hạn chót: ${newTask.deadline}.`)
+          : `${currentUser.name} đã lập kế hoạch "${newTask.title}" cho ${assigneeName} thuộc bộ phận ${newTask.division} của bạn. Hạn chót: ${newTask.deadline}.`;
 
         newNotifications.push({
           id: `notif-${Date.now()}-${m.id}`,
@@ -845,6 +867,8 @@ export default function App() {
                 onUpdateMemberRole={handleUpdateMemberRole}
                 divisions={divisions}
                 onAddDivision={handleAddDivision}
+                onDeleteDivision={handleDeleteDivision}
+                onClearAllDivisions={handleClearAllDivisions}
                 onUpdateMember={handleUpdateMember}
                 onDeleteMember={handleDeleteMember}
               />

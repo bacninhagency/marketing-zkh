@@ -47,6 +47,8 @@ interface TeamPerformanceProps {
   onUpdateMemberRole?: (memberId: string, systemRole: SystemRole) => void;
   divisions?: string[];
   onAddDivision?: (newDiv: string) => void;
+  onDeleteDivision?: (division: string) => void;
+  onClearAllDivisions?: () => void;
   onUpdateMember?: (id: string, updatedFields: Partial<Member>) => void;
   onDeleteMember?: (id: string) => void;
 }
@@ -60,6 +62,8 @@ export default function TeamPerformance({
   onUpdateMemberRole,
   divisions: passedDivisions,
   onAddDivision,
+  onDeleteDivision,
+  onClearAllDivisions,
   onUpdateMember,
   onDeleteMember
 }: TeamPerformanceProps) {
@@ -131,6 +135,8 @@ export default function TeamPerformance({
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [divisionToDelete, setDivisionToDelete] = useState<string | null>(null);
+  const [isClearingAllDivisions, setIsClearingAllDivisions] = useState(false);
 
   // Form states
   const [newMemberName, setNewMemberName] = useState('');
@@ -396,12 +402,12 @@ export default function TeamPerformance({
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2" id="member_list_heading">
               <Users className="w-5 h-5 text-indigo-600" />
-              Danh Sách Thành Viên & Vị Trí Vận Hành
+              Danh Sách Thành Viên
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Tra cứu vị trí chuyên môn, theo dõi tiến độ hoàn thành, và hiệu suất thực lĩnh theo KPIs thực tế.
+              Theo dõi tiến độ hoàn thành và hiệu suất thực lĩnh theo KPIs thực tế của từng thành viên.
             </p>
           </div>
 
@@ -1142,50 +1148,143 @@ export default function TeamPerformance({
           <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-sm p-6 relative" id="add_division_modal">
             <button 
               onClick={() => setIsAddDivisionOpen(false)}
-              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition"
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition inline-block cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
             
-            <div className="flex items-center gap-2 mb-6">
+            <div className="flex items-center gap-2 mb-5">
               <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
                 <PlusCircle className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900">Tạo Phân Ban Mới</h3>
-                <p className="text-xs text-slate-500">Thêm phân ban / phòng ban chuyên môn mới</p>
+                <h3 className="text-base font-bold text-slate-900">Quản Lý Phân Ban</h3>
+                <p className="text-xs text-slate-500">Tạo mới hoặc xóa bỏ các phân ban chuyên môn</p>
               </div>
             </div>
 
             <form onSubmit={handleAddNewDivision} className="space-y-4 text-xs font-medium">
               <div className="space-y-1">
-                <label className="text-slate-700 font-semibold block">Tên Phân Ban</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="Ví dụ: R&D, TikTok Growth, Branding..."
-                  value={divisionInput} 
-                  onChange={(e) => setDivisionInput(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-950 placeholder-slate-400 font-bold"
-                />
-              </div>
-
-              <div className="pt-2 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsAddDivisionOpen(false)}
-                  className="flex-1 py-2.5 text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 transition duration-150 rounded-xl"
-                >
-                  Hủy bỏ
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 text-white font-bold bg-indigo-600 hover:bg-indigo-700 transition duration-150 rounded-xl"
-                >
-                  Tạo mới
-                </button>
+                <label className="text-slate-700 font-semibold block">Tên Phân Ban Mới</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="Ví dụ: R&D, TikTok Growth..."
+                    value={divisionInput} 
+                    onChange={(e) => setDivisionInput(e.target.value)}
+                    className="flex-1 text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-950 placeholder-slate-400 font-bold"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4.5 py-3 text-white font-bold bg-indigo-600 hover:bg-indigo-700 transition duration-150 rounded-xl cursor-pointer shrink-0"
+                  >
+                    Thêm
+                  </button>
+                </div>
               </div>
             </form>
+
+            <div className="mt-5 border-t border-slate-100 pt-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Danh sách hiện tại ({divisions.length})</label>
+                {divisions.length > 0 && onClearAllDivisions && (
+                  <div>
+                    {isClearingAllDivisions ? (
+                      <div className="flex items-center gap-1.5 animate-in fade-in duration-150">
+                        <span className="text-[9px] font-bold text-rose-500 uppercase">Chắc chắn xóa?</span>
+                        <button
+                          type="button"
+                          onClick={() => setIsClearingAllDivisions(false)}
+                          className="px-1.5 py-0.5 text-[9px] text-slate-500 hover:text-slate-700 bg-slate-100 rounded font-bold cursor-pointer"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClearAllDivisions();
+                            setIsClearingAllDivisions(false);
+                          }}
+                          className="px-2 py-0.5 text-[9px] text-white bg-rose-600 hover:bg-rose-700 rounded font-bold cursor-pointer shadow-xs"
+                        >
+                          Xóa hết
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsClearingAllDivisions(true)}
+                        className="text-[10px] font-bold text-red-600 hover:text-red-800 transition uppercase tracking-wider cursor-pointer px-2 py-1 rounded-lg hover:bg-rose-50"
+                      >
+                        Xóa tất cả
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {divisions.length === 0 ? (
+                <div className="p-4 bg-slate-50 text-slate-400 text-center rounded-xl border border-dashed text-xs font-semibold">
+                  Chưa có phân ban nào được thiết lập. Hãy tạo phân ban để phân phối việc hiệu quả hơn!
+                </div>
+              ) : (
+                <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1" id="active_divisions_mgmt_list">
+                  {divisions.map((div) => (
+                    <div 
+                      key={div} 
+                      className="flex items-center justify-between p-2.5 px-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-100 rounded-xl transition"
+                    >
+                      <span className="text-xs font-bold text-slate-800">{div}</span>
+                      {onDeleteDivision && (
+                        <div className="flex items-center gap-1">
+                          {divisionToDelete === div ? (
+                            <div className="flex items-center gap-1.5 animate-in fade-in duration-150">
+                              <button
+                                type="button"
+                                onClick={() => setDivisionToDelete(null)}
+                                className="px-2 py-0.5 text-[10px] text-slate-500 hover:text-slate-700 bg-slate-150 bg-slate-200 font-extrabold rounded-md cursor-pointer whitespace-nowrap"
+                              >
+                                Hủy
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onDeleteDivision(div);
+                                  setDivisionToDelete(null);
+                                }}
+                                className="px-2 py-0.5 text-[10px] text-white bg-rose-600 hover:bg-rose-700 font-extrabold rounded-md cursor-pointer whitespace-nowrap shadow-xs"
+                              >
+                                Xác nhận
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setDivisionToDelete(div)}
+                              className="p-1 px-1.5 text-slate-400 hover:text-rose-650 hover:bg-rose-50 rounded-lg transition-all cursor-pointer"
+                              title="Xóa phân ban"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsAddDivisionOpen(false)}
+                className="w-full py-2.5 text-center text-xs text-slate-600 hover:text-slate-900 font-bold bg-slate-100 hover:bg-slate-200 transition duration-150 rounded-xl border border-slate-200 cursor-pointer"
+              >
+                Đóng Quản Lý
+              </button>
+            </div>
           </div>
         </div>
       )}
