@@ -181,6 +181,22 @@ export default function Dashboard({
     }));
   }, [tasks, divisionsList]);
 
+  // Task completion rate by Division
+  const divisionCompletionRateData = useMemo(() => {
+    return divisionsList.map(div => {
+      const divisionTasks = tasks.filter(t => t.division === div);
+      const total = divisionTasks.length;
+      const completed = divisionTasks.filter(t => t.status === 'Completed').length;
+      const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+      return {
+        name: div,
+        'Hoàn thành': completed,
+        'Tổng số': total,
+        'Tỷ lệ hoàn thành (%)': rate,
+      };
+    }).sort((a, b) => b['Tỷ lệ hoàn thành (%)'] - a['Tỷ lệ hoàn thành (%)']);
+  }, [tasks, divisionsList]);
+
   // Tasks by Stage / Giai đoạn chiến dịch
   const stageData = useMemo(() => {
     const stageMap: Record<string, string> = {
@@ -507,6 +523,133 @@ export default function Dashboard({
                 </div>
               );
             })}
+          </div>
+        </div>
+      </div>
+
+      {/* Task Completion Rate by Department Card */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm" id="division_task_completion_rate_card">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              Tỷ Lệ Hoàn Thành Công Việc Theo Từng Bộ Phận
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Thống kê tỷ lệ phần trăm nhiệm vụ đã cán đích (Completed) trên tổng số nhiệm vụ được giao của mỗi phân ban Marketing.
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 self-start sm:self-auto text-[11px] font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100/50">
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+            Tỉ lệ cao nhất: <strong className="font-black uppercase text-emerald-800">{divisionCompletionRateData[0]?.name || 'N/A'} ({divisionCompletionRateData[0]?.['Tỷ lệ hoàn thành (%)'] || 0}%)</strong>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Horizontal Bar Chart for precise horizontal comparison */}
+          <div className="lg:col-span-2 h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart 
+                layout="vertical" 
+                data={divisionCompletionRateData} 
+                margin={{ top: 15, right: 30, left: 20, bottom: 10 }}
+              >
+                <defs>
+                  <linearGradient id="completionGrad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#10B981" stopOpacity={0.65}/>
+                    <stop offset="100%" stopColor="#059669" stopOpacity={0.95}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0" opacity={0.6} />
+                <XAxis 
+                  type="number" 
+                  domain={[0, 100]} 
+                  unit="%" 
+                  tick={{ fill: '#64748B', fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  tick={{ fill: '#334155', fontSize: 11, fontWeight: 700 }}
+                  width={100}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip 
+                  formatter={(value, name, props) => {
+                    const completed = props.payload['Hoàn thành'];
+                    const total = props.payload['Tổng số'];
+                    return [`${value}% (${completed}/${total} công việc)`, 'Tỷ lệ đạt được'];
+                  }}
+                  contentStyle={{ backgroundColor: '#0F172A', borderRadius: '12px', color: '#fff', border: 'none', padding: '10px' }}
+                  itemStyle={{ fontSize: '11px', fontWeight: 600 }}
+                  labelStyle={{ fontWeight: 800, fontSize: '11px', color: '#94A3B8', marginBottom: '4px' }}
+                />
+                <Bar 
+                  name="Tỷ lệ hoàn thành (%)" 
+                  dataKey="Tỷ lệ hoàn thành (%)" 
+                  fill="url(#completionGrad)" 
+                  radius={[0, 6, 6, 0]} 
+                  barSize={20}
+                >
+                  {divisionCompletionRateData.map((entry, index) => {
+                    // Unique colors representing each division beautiful hues
+                    const colors = ['#10B981', '#06B6D4', '#2563EB', '#8B5CF6', '#EC4899'];
+                    return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                  })}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Quick list with mini donut circle layout to balance space */}
+          <div className="flex flex-col justify-center space-y-4">
+            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-left">Tiến độ chi tiết phân ban</h3>
+            <div className="space-y-3">
+              {divisionCompletionRateData.map((item, idx) => {
+                let textBg = 'text-slate-600 bg-slate-50';
+                
+                if (item['Tỷ lệ hoàn thành (%)'] >= 80) {
+                  textBg = 'text-emerald-700 bg-emerald-50';
+                } else if (item['Tỷ lệ hoàn thành (%)'] >= 50) {
+                  textBg = 'text-indigo-700 bg-indigo-50';
+                } else if (item['Tỷ lệ hoàn thành (%)'] > 0) {
+                  textBg = 'text-amber-700 bg-amber-50';
+                } else {
+                  textBg = 'text-rose-700 bg-rose-50';
+                }
+
+                return (
+                  <div key={idx} className="p-3 bg-slate-50/50 rounded-xl border border-slate-100 hover:bg-slate-100/40 transition duration-150 space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-extrabold text-slate-800">{item.name}</span>
+                      <span className={`p-1 px-2 text-[10px] font-black rounded-lg ${textBg}`}>
+                        {item['Tỷ lệ hoàn thành (%)']}%
+                      </span>
+                    </div>
+                    
+                    {/* Linear detailed spark progress indicators */}
+                    <div className="space-y-1">
+                      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: '#F1F5F9' }}>
+                        <div 
+                          className={`h-full rounded-full transition-all duration-550`}
+                          style={{ 
+                            width: `${item['Tỷ lệ hoàn thành (%)']}%`,
+                            backgroundColor: item['Tỷ lệ hoàn thành (%)'] >= 80 ? '#10B981' : item['Tỷ lệ hoàn thành (%)'] >= 50 ? '#4F46E5' : '#F59E0B'
+                          }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-400 font-semibold text-left">
+                        <span>Đã hoàn thành: {item['Hoàn thành']}</span>
+                        <span>Tổng số: {item['Tổng số']}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
