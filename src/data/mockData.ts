@@ -261,3 +261,7 @@ export const INITIAL_INVOICES: Invoice[] = [
     attachmentName: 'Figma_Subscription_Invoice.pdf'
   }
 ];
+git checkout -b chore/standardize-database-sync
+git add src/data/mockData.ts
+git commit -m "chore(sync): standardize mkt database nodes and align roles v1.2"
+git push origin chore/standardize-database-sync
