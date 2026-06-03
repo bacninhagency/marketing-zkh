@@ -19,7 +19,8 @@ import {
   FileSpreadsheet,
   Gauge,
   Lock,
-  Copy
+  Copy,
+  Trello
 } from 'lucide-react';
 import { Task, Member, Priority, TaskStatus, TaskStage, MarketingDivision, Attachment, RolePermissions } from '../types';
 
@@ -100,10 +101,11 @@ export default function TaskManager({
   const [copiedTaskId, setCopiedTaskId] = useState<string | null>(null);
 
   // View mode & Calendar State
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'kanban' | 'list' | 'calendar'>('kanban');
   const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
   const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth()); // current month
   const [hoveredDateCell, setHoveredDateCell] = useState<string | null>(null);
+  const [hoveredColumn, setHoveredColumn] = useState<TaskStatus | null>(null);
 
   // Task form fields
   const [title, setTitle] = useState('');
@@ -367,6 +369,27 @@ export default function TaskManager({
     setHoveredDateCell(null);
   };
 
+  const handleDropOnColumn = (e: React.DragEvent, columnStatus: TaskStatus) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData('text/plain');
+    if (taskId) {
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        const updatedFields: Partial<Task> = { status: columnStatus };
+        if (columnStatus === 'Completed') {
+          updatedFields.progress = 100;
+          updatedFields.completedAt = new Date().toISOString().split('T')[0];
+        } else if (columnStatus === 'Todo' && task.progress === 100) {
+          updatedFields.progress = 0;
+        } else if (columnStatus === 'InProgress' && (task.progress === 100 || task.progress === 0)) {
+          updatedFields.progress = 50;
+        }
+        onUpdateTask(taskId, updatedFields);
+      }
+    }
+    setHoveredColumn(null);
+  };
+
   // Generate 42 days grid for standard desktop/mobile calendar view
   const daysInMonthGrid = useMemo(() => {
     const year = calendarYear;
@@ -418,6 +441,18 @@ export default function TaskManager({
       {/* View Mode Tabs */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between bg-white p-3 rounded-2xl border border-slate-100 shadow-3xs gap-3">
         <div className="flex bg-slate-100 p-1 rounded-xl self-start sm:self-auto w-full sm:w-auto">
+          <button
+            onClick={() => setViewMode('kanban')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition duration-200 cursor-pointer ${
+              viewMode === 'kanban' 
+                ? 'bg-white text-indigo-600 shadow-xs' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+            id="view_mode_kanban_tab"
+          >
+            <Trello className="w-3.5 h-3.5" />
+            <span>Bảng Kanban</span>
+          </button>
           <button
             onClick={() => setViewMode('list')}
             className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition duration-200 cursor-pointer ${
@@ -729,8 +764,242 @@ export default function TaskManager({
         </div>
       </div>
 
-      {/* Task List Grid Representation / Monthly Calendar View */}
-      {viewMode === 'list' ? (
+      {/* Task List Grid Representation / Monthly Calendar View / Kanban Board */}
+      {viewMode === 'kanban' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="kanban_board_container">
+          {([
+            { status: 'Todo', label: 'Cần làm (Todo)', icon: <Clock className="w-4 h-4 text-slate-500" />, bg: 'bg-slate-50/70', border: 'border-slate-200/60', hoverBg: 'bg-slate-100/85', badgeColor: 'bg-slate-200 text-slate-800' },
+            { status: 'InProgress', label: 'Đang thực hiện (In Progress)', icon: <Sparkles className="w-4 h-4 text-indigo-600" />, bg: 'bg-indigo-50/30', border: 'border-indigo-100/60', hoverBg: 'bg-indigo-50/60', badgeColor: 'bg-indigo-100 text-indigo-800' },
+            { status: 'Completed', label: 'Đã hoàn thành (Completed)', icon: <CheckCircle2 className="w-4 h-4 text-emerald-600" />, bg: 'bg-emerald-50/20', border: 'border-emerald-100/40', hoverBg: 'bg-emerald-50/40', badgeColor: 'bg-emerald-100 text-emerald-800' }
+          ] as const).map(({ status: columnStatus, label, icon, bg, border, hoverBg, badgeColor }) => {
+            const columnTasks = filteredTasks.filter(t => t.status === columnStatus);
+            const isHovered = hoveredColumn === columnStatus;
+
+            return (
+              <div
+                key={columnStatus}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (hoveredColumn !== columnStatus) {
+                    setHoveredColumn(columnStatus);
+                  }
+                }}
+                onDragLeave={() => setHoveredColumn(null)}
+                onDrop={(e) => handleDropOnColumn(e, columnStatus)}
+                className={`flex flex-col h-[750px] rounded-2xl border p-4.5 transition-all duration-200 ${bg} ${border} ${
+                  isHovered ? `${hoverBg} border-indigo-400 border-2 border-dashed shadow-inner scale-[1.01]` : 'shadow-2xs'
+                }`}
+                id={`kanban_column_${columnStatus}`}
+              >
+                {/* Column Header */}
+                <div className="flex items-center justify-between mb-4 pb-2 border-b border-black/5 select-none shrink-0">
+                  <div className="flex items-center gap-2">
+                    {icon}
+                    <h3 className="text-xs sm:text-sm font-black text-slate-900">{label}</h3>
+                  </div>
+                  <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold ${badgeColor}`}>
+                    {columnTasks.length}
+                  </span>
+                </div>
+
+                {/* Draggable Cards Stack container */}
+                <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-slate-200">
+                  {columnTasks.length > 0 ? (
+                    columnTasks.map((task) => {
+                      const assignee = members.find(m => m.id === task.assigneeId);
+                      const deadlineDate = new Date(task.deadline);
+                      const isOverdue = task.status !== 'Completed' && deadlineDate < CURRENT_DATE;
+                      const diffTime = deadlineDate.getTime() - CURRENT_DATE.getTime();
+                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                      let deadlineLabel = '';
+                      let deadlineClass = 'text-[10px] text-slate-550 bg-slate-50 border border-slate-150';
+                      
+                      if (task.status === 'Completed') {
+                        deadlineLabel = `Xong: ${task.completedAt || 'Hạn đúng'}`;
+                        deadlineClass = 'text-[10px] text-emerald-700 bg-emerald-50/80 border border-emerald-100/50';
+                      } else if (isOverdue) {
+                        deadlineLabel = `Quá hạn ${Math.abs(diffDays)} ngày ⚠️`;
+                        deadlineClass = 'text-[10px] text-red-700 bg-red-50 border border-red-200 font-bold';
+                      } else if (diffDays === 0) {
+                        deadlineLabel = 'Hạn chót hôm nay ⏳';
+                        deadlineClass = 'text-[10px] text-amber-700 bg-amber-50 border border-amber-200 font-extrabold';
+                      } else if (diffDays <= 3) {
+                        deadlineLabel = `Còn ${diffDays} ngày`;
+                        deadlineClass = 'text-[10px] text-amber-600 bg-amber-50/50 border border-amber-100 font-semibold';
+                      } else {
+                        deadlineLabel = `${task.deadline} (Còn ${diffDays} ngày)`;
+                        deadlineClass = 'text-[10px] text-slate-500 bg-slate-50/50 border border-slate-100';
+                      }
+
+                      let priorityBadge = <span className="bg-emerald-50 text-emerald-700 text-[9px] px-1.5 py-0.2 rounded font-bold">Thấp</span>;
+                      if (task.priority === 'High') {
+                        priorityBadge = <span className="bg-red-50 text-red-700 text-[9px] px-1.5 py-0.2 rounded font-black">Cao 🔴</span>;
+                      } else if (task.priority === 'Medium') {
+                        priorityBadge = <span className="bg-amber-50 text-amber-700 text-[9px] px-1.5 py-0.2 rounded font-bold">Trung bình</span>;
+                      }
+
+                      let stageVietnamese = '';
+                      switch(task.stage) {
+                        case 'Planning': stageVietnamese = 'Lập KH'; break;
+                        case 'Production': stageVietnamese = 'Sản xuất'; break;
+                        case 'Execution': stageVietnamese = 'Triển khai'; break;
+                        case 'Optimization': stageVietnamese = 'Tối ưu hóa'; break;
+                      }
+
+                      return (
+                        <div
+                          key={task.id}
+                          draggable={true}
+                          onDragStart={(e) => handleDragStart(e, task.id)}
+                          className={`bg-white rounded-xl border border-slate-150 p-3.5 shadow-3xs cursor-grab active:cursor-grabbing hover:shadow-md hover:border-slate-300 transition duration-150 flex flex-col justify-between space-y-3 relative group/card ${
+                            isOverdue ? 'border-red-200 ring-1 ring-red-50' : ''
+                          }`}
+                          id={`kanban_task_card_${task.id}`}
+                        >
+                          <div className="space-y-2.5">
+                            <div className="flex justify-between items-center gap-1.5 shrink-0 select-none">
+                              <span className="text-[8.5px] font-bold uppercase tracking-wider text-indigo-650 bg-indigo-50 border border-indigo-100 px-1.5 py-0.2 rounded">
+                                {stageVietnamese}
+                              </span>
+                              <div className="flex gap-1">
+                                {priorityBadge}
+                              </div>
+                            </div>
+
+                            <div>
+                              <h4 
+                                className="text-xs font-bold text-slate-900 leading-snug group-hover/card:text-indigo-600 transition cursor-pointer font-sans"
+                                onClick={() => openEditModal(task)}
+                                title="Bấm vào để mở bảng điều khiển chi tiết"
+                              >
+                                {task.title}
+                              </h4>
+                              <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-normal font-sans">
+                                {task.description}
+                              </p>
+                            </div>
+
+                            {/* Progress info */}
+                            <div className="space-y-1 select-none">
+                              <div className="flex justify-between text-[10px] font-semibold text-slate-400">
+                                <span>Tiến trình</span>
+                                <span className="text-slate-800 font-extrabold">{task.progress}%</span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-300 ${
+                                    task.status === 'Completed' ? 'bg-emerald-500' : 'bg-indigo-600'
+                                  }`}
+                                  style={{ width: `${task.progress}%` }}
+                                ></div>
+                              </div>
+                            </div>
+
+                            {/* Deadline info */}
+                            <div className={`p-1.5 px-2.5 rounded-lg flex items-center gap-1.5 select-none ${deadlineClass}`}>
+                              <Calendar className="w-3 h-3 text-current shrink-0" />
+                              <span className="truncate">{deadlineLabel}</span>
+                            </div>
+
+                            {/* Attachments quick-show */}
+                            {task.attachments && task.attachments.length > 0 && (
+                              <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-400 select-none">
+                                <Paperclip className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span>{task.attachments.length} tài liệu đính kèm</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Footer with avatar & hover quick controls */}
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1 select-none shrink-0">
+                            {assignee ? (
+                              <div className="flex items-center gap-1.5">
+                                <img 
+                                  src={assignee.avatar} 
+                                  alt={assignee.name} 
+                                  className="w-5.5 h-5.5 rounded-full object-cover border border-slate-100"
+                                  title={`Phụ trách: ${assignee.name}`}
+                                  referrerPolicy="no-referrer"
+                                />
+                                <span className="text-[10px] font-bold text-slate-600 max-w-20 truncate">{assignee.name.split(' ').pop()}</span>
+                              </div>
+                            ) : (
+                              <span className="text-[9px] text-amber-600 font-bold flex items-center gap-0.5">
+                                <AlertCircle className="w-2.5 h-2.5" /> Không ai phụ trách
+                              </span>
+                            )}
+
+                            {/* Interactive Quick buttons */}
+                            <div className="flex items-center gap-1 opacity-100 lg:opacity-0 group-hover/card:opacity-100 transition duration-155">
+                              <button
+                                onClick={() => handleCopyTaskDetails(task)}
+                                className={`p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-slate-50 border border-transparent hover:border-slate-100 transition cursor-pointer`}
+                                title="Sao chép chi tiết công việc"
+                                id={`copy_kanban_btn_${task.id}`}
+                              >
+                                {copiedTaskId === task.id ? (
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                ) : (
+                                  <Copy className="w-3 h-3" />
+                                )}
+                              </button>
+                              
+                              {(() => {
+                                const canEdit = permissions.tasks_edit_all || task.assigneeId === currentUser.id || task.createdBy === currentUser.id;
+                                return (
+                                  <button 
+                                    disabled={!canEdit}
+                                    onClick={() => openEditModal(task)}
+                                    className={`p-1 rounded border border-transparent transition cursor-pointer ${
+                                      canEdit 
+                                        ? 'text-indigo-600 hover:bg-indigo-50 hover:border-indigo-100' 
+                                        : 'text-slate-350 cursor-not-allowed opacity-50'
+                                    }`}
+                                    title={canEdit ? "Chỉnh sửa công việc" : "Không có quyền sửa"}
+                                  >
+                                    {canEdit ? <Edit className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+                                  </button>
+                                );
+                              })()}
+
+                              {(() => {
+                                const canDelete = permissions.tasks_delete || task.createdBy === currentUser.id;
+                                return (
+                                  <button 
+                                    disabled={!canDelete}
+                                    onClick={() => {
+                                      setTaskToDelete(task);
+                                      setIsDeleteConfirmOpen(true);
+                                    }}
+                                    className={`p-1 rounded border border-transparent transition cursor-pointer ${
+                                      canDelete 
+                                        ? 'text-red-500 hover:bg-red-50 hover:border-red-150' 
+                                        : 'text-slate-300 cursor-not-allowed opacity-50'
+                                    }`}
+                                    title={canDelete ? "Xóa" : "Không có quyền xóa"}
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="py-12 border-2 border-dashed border-slate-150 rounded-xl bg-slate-50/50 flex flex-col items-center justify-center text-center p-4">
+                      <Clock className="w-6 h-6 text-slate-300 mb-1" />
+                      <span className="text-[10px] font-bold text-slate-400">Trống cột {label.split(' ')[0]}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : viewMode === 'list' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {filteredTasks.length > 0 ? (
           filteredTasks.map((task) => {
