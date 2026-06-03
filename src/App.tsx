@@ -21,7 +21,8 @@ import {
   Sun,
   ShieldCheck,
   Link2,
-  GitBranch
+  GitBranch,
+  Key
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
@@ -114,6 +115,20 @@ export default function App() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isNotifDropdownOpen, setIsNotifDropdownOpen] = useState(false);
 
+  // Authentication configuration and session login states
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    const cached = localStorage.getItem('mkt_is_authenticated');
+    if (cached === null) {
+      localStorage.setItem('mkt_is_authenticated', 'true');
+      return true;
+    }
+    return cached === 'true';
+  });
+
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState<string | null>(null);
+
   // RBAC System States
   const [currentUser, setCurrentUser] = useState<Member>(() => {
     const cached = localStorage.getItem('mkt_current_user');
@@ -200,7 +215,10 @@ export default function App() {
     const cachedInvoices = localStorage.getItem('mkt_invoices');
 
     if (cachedMembers) {
-      setMembers(JSON.parse(cachedMembers));
+      const parsed: Member[] = JSON.parse(cachedMembers);
+      const migrated = parsed.map(m => m.password ? m : { ...m, password: '123' });
+      setMembers(migrated);
+      localStorage.setItem('mkt_members', JSON.stringify(migrated));
     } else {
       setMembers(INITIAL_MEMBERS);
       localStorage.setItem('mkt_members', JSON.stringify(INITIAL_MEMBERS));
@@ -503,6 +521,36 @@ export default function App() {
     setIsNotifDropdownOpen(false); // Close dropdown on user switch
   };
 
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const found = members.find(m => m.email.toLowerCase().trim() === loginEmail.toLowerCase().trim());
+    if (!found) {
+      setLoginError('Không tìm thấy tài khoản với email này trong phòng!');
+      return;
+    }
+    const expectedPassword = found.password || '123';
+    if (loginPassword !== expectedPassword) {
+      setLoginError('Mật khẩu không chính xác! Vui lòng thử lại.');
+      return;
+    }
+
+    // Success Authentication
+    setCurrentUser(found);
+    localStorage.setItem('mkt_current_user', JSON.stringify(found));
+    setIsAuthenticated(true);
+    localStorage.setItem('mkt_is_authenticated', 'true');
+    setLoginError(null);
+    setLoginEmail('');
+    setLoginPassword('');
+    triggerNotification(`Đăng nhập thành công! Xin chào ${found.name} (${found.systemRole})`);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.setItem('mkt_is_authenticated', 'false');
+    triggerNotification('Đã đăng xuất tài khoản an toàn.');
+  };
+
   const handleMarkAllNotificationsAsRead = () => {
     const updated = notifications.map(n => 
       n.memberId === currentUser.id ? { ...n, isRead: true } : n
@@ -526,6 +574,111 @@ export default function App() {
 
   const currentUserNotifications = notifications.filter(n => n.memberId === currentUser.id);
   const unreadCount = currentUserNotifications.filter(n => !n.isRead).length;
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 relative overflow-hidden font-sans select-none">
+        {/* Decorative ambient blobs */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none -translate-x-1/2 -translate-y-1/2"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none translate-x-1/2 translate-y-1/2"></div>
+        
+        {/* Interactive Notification Alert */}
+        <AnimatePresence>
+          {notification && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed top-5 left-1/2 -translate-x-1/2 z-55 bg-indigo-950 text-white px-5 py-3 rounded-2xl border border-indigo-800 shadow-2xl text-xs font-semibold flex items-center gap-2.5 max-w-sm sm:max-w-md"
+            >
+              <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>{notification}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="w-full max-w-lg bg-slate-950/80 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl shadow-2xl relative z-10 space-y-6">
+          
+          {/* Title header */}
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white mx-auto shadow-lg shadow-indigo-500/25">
+              <ShieldCheck className="w-6 h-6 animate-pulse" />
+            </div>
+            <h1 className="text-lg font-black text-white tracking-tight pt-2 uppercase">CỔNG ĐĂNG NHẬP PHÒNG MARKETING</h1>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed font-medium">
+              Vui lòng sử dụng địa chỉ email phòng ban và mật khẩu đã cài đặt để đăng nhập hệ thống.
+            </p>
+          </div>
+
+          {/* Login Form */}
+          <form onSubmit={handleLoginSubmit} className="space-y-4">
+            {loginError && (
+              <div className="p-3.5 bg-rose-500/15 border border-rose-500/30 text-rose-400 rounded-xl text-xs font-semibold leading-relaxed">
+                ⚠️ {loginError}
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="text-slate-350 font-bold text-xs uppercase tracking-wider block">Địa chỉ Email</label>
+              <input 
+                type="email" 
+                required
+                placeholder="Ví dụ: hai.nguyen@marketing.co"
+                value={loginEmail} 
+                onChange={(e) => setLoginEmail(e.target.value)}
+                className="w-full text-xs p-3.5 rounded-xl bg-slate-900 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-white placeholder-slate-500 transition-all font-mono"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-slate-350 font-bold text-xs uppercase tracking-wider block">Mật khẩu</label>
+              <input 
+                type="password" 
+                required
+                placeholder="Mật khẩu (Mặc định: 123)"
+                value={loginPassword} 
+                onChange={(e) => setLoginPassword(e.target.value)}
+                className="w-full text-xs p-3.5 rounded-xl bg-slate-900 border border-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-white placeholder-slate-500 transition-all font-mono"
+              />
+            </div>
+
+            <button 
+              type="submit"
+              className="w-full p-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-lg shadow-indigo-600/20 active:scale-[0.98] transition-all cursor-pointer"
+            >
+              Xác thực Đăng nhập
+            </button>
+          </form>
+
+          {/* Fast Switch User testing shortcuts */}
+          <div className="pt-4 border-t border-slate-800/80 space-y-3">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Chọn tài khoản đăng nhập nhanh (Để thử nghiệm)</span>
+            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+              {members.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => {
+                    setLoginEmail(m.email);
+                    setLoginPassword(m.password || '123');
+                    setLoginError(null);
+                  }}
+                  className="flex items-center gap-2 p-2 rounded-xl bg-slate-900/40 border border-slate-800/50 hover:bg-slate-900 hover:border-slate-700 text-left transition"
+                  type="button"
+                >
+                  <img src={m.avatar} alt={m.name} className="w-8 h-8 rounded-full object-cover shrink-0 border border-slate-800" referrerPolicy="no-referrer" />
+                  <div className="overflow-hidden">
+                    <span className="text-[11px] font-bold text-slate-200 block truncate">{m.name}</span>
+                    <span className="text-[9px] text-slate-400 block truncate font-mono uppercase font-bold tracking-tight text-indigo-400">{m.systemRole} (pw: {m.password || '123'})</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans" id="marketing_app_container">
@@ -773,6 +926,14 @@ export default function App() {
                     {currentUser.name}
                   </span>
                 </div>
+                <button 
+                  onClick={handleLogout}
+                  className="ml-1.5 p-1.5 rounded-lg border border-slate-150 hover:border-rose-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition cursor-pointer"
+                  title="Đăng xuất khỏi hệ thống"
+                  id="header_logout_btn"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
               </div>
 
             </div>
@@ -832,6 +993,13 @@ export default function App() {
           id="mobile_tab_btn_standardize"
         >
           ⚙️ Chuẩn hóa & Git
+        </button>
+        <button
+          onClick={handleLogout}
+          className="px-3.5 py-2 rounded-xl transition-all text-rose-600 bg-rose-50 border border-rose-100 font-bold"
+          id="mobile_tab_btn_logout"
+        >
+          🚪 Đăng xuất
         </button>
       </div>
 

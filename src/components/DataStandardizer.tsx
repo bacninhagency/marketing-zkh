@@ -189,6 +189,7 @@ export default function DataStandardizer({
         role: m.role.trim(),
         systemRole: m.systemRole,
         email: m.email.trim().toLowerCase(),
+        password: m.password || "123",
         division: m.division || "",
         avatar: m.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
         efficiencyScore: m.efficiencyScore || 80,

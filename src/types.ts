@@ -48,6 +48,7 @@ export interface Member {
   role: string;
   systemRole: SystemRole;
   email: string;
+  password?: string;
   division: MarketingDivision;
   avatar: string;
   efficiencyScore: number; // 0 to 100, calculated or specified

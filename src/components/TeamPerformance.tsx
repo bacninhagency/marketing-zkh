@@ -25,7 +25,8 @@ import {
   ListTodo,
   Plus,
   Check,
-  CheckSquare
+  CheckSquare,
+  Key
 } from 'lucide-react';
 import { Member, Task, MarketingDivision, SystemRole, RolePermissions } from '../types';
 
@@ -142,6 +143,7 @@ export default function TeamPerformance({
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberRole, setNewMemberRole] = useState('');
   const [newMemberEmail, setNewMemberEmail] = useState('');
+  const [newMemberPassword, setNewMemberPassword] = useState('123');
   const [newMemberDivision, setNewMemberDivision] = useState<MarketingDivision>(divisions[0] || 'Content');
   const [newMemberEfficiency, setNewMemberEfficiency] = useState(85);
   const [newMemberSystemRole, setNewMemberSystemRole] = useState<SystemRole>('Member');
@@ -155,6 +157,7 @@ export default function TeamPerformance({
   const [editMemberName, setEditMemberName] = useState('');
   const [editMemberRole, setEditMemberRole] = useState('');
   const [editMemberEmail, setEditMemberEmail] = useState('');
+  const [editMemberPassword, setEditMemberPassword] = useState('123');
   const [editMemberDivision, setEditMemberDivision] = useState<MarketingDivision>('Content');
   const [editMemberEfficiency, setEditMemberEfficiency] = useState(85);
   const [editMemberSystemRole, setEditMemberSystemRole] = useState<SystemRole>('Member');
@@ -167,6 +170,7 @@ export default function TeamPerformance({
     setEditMemberName(member.name);
     setEditMemberRole(member.role);
     setEditMemberEmail(member.email);
+    setEditMemberPassword(member.password || '123');
     setEditMemberDivision(member.division);
     setEditMemberEfficiency(member.efficiencyScore);
     setEditMemberSystemRole(member.systemRole);
@@ -292,6 +296,7 @@ export default function TeamPerformance({
       name: newMemberName,
       role: newMemberRole,
       email: newMemberEmail,
+      password: newMemberPassword || '123',
       division: newMemberDivision,
       systemRole: newMemberSystemRole,
       avatar: newMemberAvatar || PRESET_AVATARS[0],
@@ -305,6 +310,7 @@ export default function TeamPerformance({
     setNewMemberName('');
     setNewMemberRole('');
     setNewMemberEmail('');
+    setNewMemberPassword('123');
     setNewMemberDivision(divisions[0] || 'Content');
     setNewMemberEfficiency(85);
     setNewMemberSystemRole('Member');
@@ -333,6 +339,7 @@ export default function TeamPerformance({
         name: editMemberName,
         role: editMemberRole,
         email: editMemberEmail,
+        password: editMemberPassword || '123',
         division: editMemberDivision,
         systemRole: editMemberSystemRole,
         efficiencyScore: Number(editMemberEfficiency),
@@ -347,6 +354,7 @@ export default function TeamPerformance({
     setEditMemberName('');
     setEditMemberRole('');
     setEditMemberEmail('');
+    setEditMemberPassword('123');
     setEditMemberDivision(divisions[0] || 'Content');
     setEditMemberEfficiency(85);
     setEditMemberSystemRole('Member');
@@ -678,13 +686,15 @@ export default function TeamPerformance({
                           {/* 3. Email */}
                           <td className="p-4 hidden md:table-cell text-slate-500 font-mono truncate max-w-[180px]">
                             <div className="space-y-1 text-left">
-                              <span className="block">{emp.email}</span>
-                              {(emp.phone || emp.birthDate) && (
-                                <div className="text-[10px] text-slate-400 font-sans space-y-0.5 mt-1 font-medium">
-                                  {emp.phone && <div className="flex items-center gap-1 font-mono">SĐT: {emp.phone}</div>}
-                                  {emp.birthDate && <div className="flex items-center gap-1 font-mono">NS: {emp.birthDate.split('-').reverse().join('/')}</div>}
+                              <span className="block font-medium text-slate-805">{emp.email}</span>
+                              <div className="text-[10px] text-slate-400 font-sans space-y-0.5 mt-1 font-medium">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1 rounded font-bold font-sans">Mật khẩu:</span> 
+                                  <span className="font-mono text-indigo-950 font-bold select-all bg-indigo-50/20 px-1 py-0.2 rounded border border-indigo-100/30">{emp.password || '123'}</span>
                                 </div>
-                              )}
+                                {emp.phone && <div className="flex items-center gap-1 font-mono pt-0.5">SĐT: {emp.phone}</div>}
+                                {emp.birthDate && <div className="flex items-center gap-1 font-mono">NS: {emp.birthDate.split('-').reverse().join('/')}</div>}
+                              </div>
                             </div>
                           </td>
 
@@ -862,10 +872,16 @@ export default function TeamPerformance({
                       )}
                     </div>
 
-                     <div className="flex gap-2 items-center text-xs text-slate-500 font-medium bg-white p-2.5 rounded-xl border border-slate-100">
-                      <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">{emp.email}</span>
-                    </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-500 font-medium">
+                       <div className="flex gap-1.5 items-center bg-white px-2 py-1.5 rounded-xl border border-slate-100 overflow-hidden" title={emp.email}>
+                         <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                         <span className="truncate text-[10.5px] font-mono">{emp.email}</span>
+                       </div>
+                       <div className="flex gap-1.5 items-center bg-indigo-50/50 px-2 py-1.5 rounded-xl border border-indigo-100/30 text-indigo-950 font-semibold">
+                         <Key className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                         <span className="font-mono text-[10.5px] truncate">Pass: <strong className="text-indigo-700 font-black select-all bg-white px-1 py-0.2 rounded border border-indigo-100">{emp.password || '123'}</strong></span>
+                       </div>
+                     </div>
 
                     {(emp.phone || emp.birthDate) && (
                       <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600 bg-white/70 p-2.5 rounded-xl border border-slate-100/80">
@@ -1055,16 +1071,29 @@ export default function TeamPerformance({
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-slate-700 font-semibold block">Địa chỉ Email</label>
-                <input 
-                  type="email" 
-                  required
-                  placeholder="tuan.hoang@marketing.co"
-                  value={newMemberEmail} 
-                  onChange={(e) => setNewMemberEmail(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-950 placeholder-slate-400"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-slate-700 font-semibold block">Địa chỉ Email</label>
+                  <input 
+                    type="email" 
+                    required
+                    placeholder="tuan.hoang@marketing.co"
+                    value={newMemberEmail} 
+                    onChange={(e) => setNewMemberEmail(e.target.value)}
+                    className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-950 placeholder-slate-400"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-700 font-semibold block">Mật khẩu Đăng nhập</label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="Mật khẩu tài khoản (Mặc định: 123)"
+                    value={newMemberPassword} 
+                    onChange={(e) => setNewMemberPassword(e.target.value)}
+                    className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-950 placeholder-slate-400"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1390,16 +1419,29 @@ export default function TeamPerformance({
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-slate-700 font-semibold block">Địa chỉ Email</label>
-                <input 
-                  type="email" 
-                  required
-                  placeholder="tuan.hoang@marketing.co"
-                  value={editMemberEmail} 
-                  onChange={(e) => setEditMemberEmail(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-950 placeholder-slate-400"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-slate-700 font-semibold block">Địa chỉ Email</label>
+                  <input 
+                    type="email" 
+                    required
+                    placeholder="tuan.hoang@marketing.co"
+                    value={editMemberEmail} 
+                    onChange={(e) => setEditMemberEmail(e.target.value)}
+                    className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-950 placeholder-slate-400"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-slate-700 font-semibold block">Mật khẩu Đăng nhập</label>
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="Mật khẩu tài khoản (Mặc định: 123)"
+                    value={editMemberPassword} 
+                    onChange={(e) => setEditMemberPassword(e.target.value)}
+                    className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-950 placeholder-slate-400"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
