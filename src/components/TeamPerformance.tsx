@@ -668,6 +668,8 @@ export default function TeamPerformance({
                         ratingText = 'Đạt chỉ tiêu';
                       }
 
+                      const isSecuredAdmin = emp.systemRole === 'Admin' && currentUser.systemRole !== 'Admin';
+
                       return (
                         <tr 
                           key={emp.id} 
@@ -716,14 +718,28 @@ export default function TeamPerformance({
                           {/* 3. Email */}
                           <td className="p-4 hidden md:table-cell text-slate-500 font-mono truncate max-w-[180px]">
                             <div className="space-y-1 text-left">
-                              <span className="block font-medium text-slate-805">{emp.email}</span>
+                              <span className="block font-medium text-slate-805">
+                                {isSecuredAdmin ? '••••••••@••••••••' : emp.email}
+                              </span>
                               <div className="text-[10px] text-slate-400 font-sans space-y-0.5 mt-1 font-medium">
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1 rounded font-bold font-sans pb-0.5">Mật khẩu:</span> 
-                                  <SecurePasswordText value={emp.password || '123'} />
+                                  {isSecuredAdmin ? (
+                                    <span className="font-mono font-bold select-all text-indigo-950 bg-indigo-50/20 px-1 rounded border border-indigo-100/30">••••••••</span>
+                                  ) : (
+                                    <SecurePasswordText value={emp.password || '123'} />
+                                  )}
                                 </div>
-                                {emp.phone && <div className="flex items-center gap-1 font-mono pt-0.5">SĐT: {emp.phone}</div>}
-                                {emp.birthDate && <div className="flex items-center gap-1 font-mono">NS: {emp.birthDate.split('-').reverse().join('/')}</div>}
+                                {emp.phone && (
+                                  <div className="flex items-center gap-1 font-mono pt-0.5">
+                                    SĐT: {isSecuredAdmin ? '••••••••' : emp.phone}
+                                  </div>
+                                )}
+                                {emp.birthDate && (
+                                  <div className="flex items-center gap-1 font-mono">
+                                    NS: {isSecuredAdmin ? '••••••••' : emp.birthDate.split('-').reverse().join('/')}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -787,22 +803,35 @@ export default function TeamPerformance({
                             <td className="p-4 pr-6 text-center">
                               <div className="flex items-center justify-center gap-1">
                                 <button
+                                  disabled={isSecuredAdmin}
                                   onClick={() => openEditModal(emp)}
-                                  className="p-2 text-indigo-600 hover:text-indigo-850 hover:bg-slate-100 rounded-xl transition cursor-pointer"
-                                  title="Sửa thông tin"
+                                  className={`p-2 rounded-xl transition ${
+                                    isSecuredAdmin
+                                      ? 'text-slate-300 cursor-not-allowed opacity-50'
+                                      : 'text-indigo-600 hover:text-indigo-850 hover:bg-slate-100 cursor-pointer'
+                                  }`}
+                                  title={isSecuredAdmin ? 'Chỉ Admin mới có quyền sửa thông tin Admin' : 'Sửa thông tin'}
                                   id={`edit_member_btn_${emp.id}`}
                                 >
                                   <Edit2 className="w-4 h-4" />
                                 </button>
                                 <button
-                                  disabled={emp.id === 'm1' || emp.id === currentUser.id}
+                                  disabled={emp.id === 'm1' || emp.id === currentUser.id || isSecuredAdmin}
                                   onClick={() => setDeleteConfirmId(emp.id)}
                                   className={`p-2 rounded-xl transition ${
-                                    emp.id === 'm1' || emp.id === currentUser.id
+                                    emp.id === 'm1' || emp.id === currentUser.id || isSecuredAdmin
                                       ? 'text-slate-300 cursor-not-allowed opacity-50'
                                       : 'text-rose-600 hover:text-rose-800 hover:bg-rose-50 cursor-pointer'
                                   }`}
-                                  title={emp.id === 'm1' ? 'Không thể xóa Admin hệ thống' : emp.id === currentUser.id ? 'Không thể tự xóa chính mình' : 'Xóa thành viên'}
+                                  title={
+                                    emp.id === 'm1' 
+                                      ? 'Không thể xóa Admin hệ thống' 
+                                      : emp.id === currentUser.id 
+                                        ? 'Không thể tự xóa chính mình' 
+                                        : isSecuredAdmin 
+                                          ? 'Chỉ Admin mới có quyền xóa Admin' 
+                                          : 'Xóa thành viên'
+                                  }
                                   id={`delete_member_btn_${emp.id}`}
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -836,6 +865,8 @@ export default function TeamPerformance({
                       ratingClass = 'bg-blue-100 text-blue-800';
                       ratingText = 'Đạt chỉ tiêu kế hoạch';
                     }
+
+                    const isSecuredAdmin = emp.systemRole === 'Admin' && currentUser.systemRole !== 'Admin';
 
                     return (
                       <div 
@@ -878,22 +909,35 @@ export default function TeamPerformance({
                       {permissions.team_add_member && (
                         <div className="flex gap-1 self-start">
                           <button
+                            disabled={isSecuredAdmin}
                             onClick={() => openEditModal(emp)}
-                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-100 shadow-xs transition cursor-pointer"
-                            title="Sửa thông tin"
+                            className={`p-1.5 rounded-lg border shadow-xs transition ${
+                              isSecuredAdmin
+                                ? 'text-slate-200 cursor-not-allowed opacity-40 border-transparent bg-transparent shadow-none'
+                                : 'text-slate-400 hover:text-indigo-600 hover:bg-white border-transparent hover:border-slate-100 cursor-pointer'
+                            }`}
+                            title={isSecuredAdmin ? 'Chỉ Admin mới có quyền sửa thông tin Admin' : 'Sửa thông tin'}
                             id={`grid_edit_member_btn_${emp.id}`}
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            disabled={emp.id === 'm1' || emp.id === currentUser.id}
+                            disabled={emp.id === 'm1' || emp.id === currentUser.id || isSecuredAdmin}
                             onClick={() => setDeleteConfirmId(emp.id)}
-                            className={`p-1.5 rounded-lg border border-transparent shadow-xs transition ${
-                              emp.id === 'm1' || emp.id === currentUser.id
-                                ? 'text-slate-200 cursor-not-allowed opacity-40'
-                                : 'text-slate-400 hover:text-rose-600 hover:bg-white hover:border-rose-100 hover:shadow-xs cursor-pointer'
+                            className={`p-1.5 rounded-lg border shadow-xs transition ${
+                              emp.id === 'm1' || emp.id === currentUser.id || isSecuredAdmin
+                                ? 'text-slate-200 cursor-not-allowed opacity-40 border-transparent shadow-none'
+                                : 'text-slate-400 hover:text-rose-600 hover:bg-white hover:border-rose-100 cursor-pointer'
                             }`}
-                            title={emp.id === 'm1' ? 'Không thể xóa Admin hệ thống' : emp.id === currentUser.id ? 'Không thể tự xóa chính mình' : 'Xóa thành viên'}
+                            title={
+                              emp.id === 'm1' 
+                                ? 'Không thể xóa Admin hệ thống' 
+                                : emp.id === currentUser.id 
+                                  ? 'Không thể tự xóa chính mình' 
+                                  : isSecuredAdmin 
+                                    ? 'Chỉ Admin mới có quyền xóa Admin' 
+                                    : 'Xóa thành viên'
+                            }
                             id={`grid_delete_member_btn_${emp.id}`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -903,16 +947,22 @@ export default function TeamPerformance({
                     </div>
 
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-slate-500 font-medium">
-                       <div className="flex gap-1.5 items-center bg-white px-2 py-1.5 rounded-xl border border-slate-100 overflow-hidden" title={emp.email}>
+                       <div className="flex gap-1.5 items-center bg-white px-2 py-1.5 rounded-xl border border-slate-100 overflow-hidden" title={isSecuredAdmin ? '••••••••@••••••••' : emp.email}>
                          <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                         <span className="truncate text-[10.5px] font-mono">{emp.email}</span>
+                         <span className="truncate text-[10.5px] font-mono">
+                           {isSecuredAdmin ? '••••••••@••••••••' : emp.email}
+                         </span>
                        </div>
                        <div className="flex gap-1.5 items-center bg-indigo-50/50 px-2 py-1.5 rounded-xl border border-indigo-100/30 text-indigo-950 font-semibold justify-between">
                          <div className="flex gap-1.5 items-center">
                            <Key className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                            <span className="text-[10.5px]">Pass:</span>
                          </div>
-                         <SecurePasswordText value={emp.password || '123'} />
+                         {isSecuredAdmin ? (
+                           <span className="font-mono text-[10.5px] font-bold select-all text-indigo-950 px-1">••••••••</span>
+                         ) : (
+                           <SecurePasswordText value={emp.password || '123'} />
+                         )}
                        </div>
                      </div>
 
@@ -921,13 +971,17 @@ export default function TeamPerformance({
                         {emp.phone && (
                           <div className="truncate">
                             <span className="text-[9px] text-slate-400 font-bold block uppercase">Số ĐT</span>
-                            <span className="font-mono font-semibold">{emp.phone}</span>
+                            <span className="font-mono font-semibold">
+                              {isSecuredAdmin ? '••••••••' : emp.phone}
+                            </span>
                           </div>
                         )}
                         {emp.birthDate && (
                           <div className="truncate">
                             <span className="text-[9px] text-slate-400 font-bold block uppercase">Ngày sinh</span>
-                            <span className="font-mono font-semibold">{emp.birthDate.split('-').reverse().join('/')}</span>
+                            <span className="font-mono font-semibold">
+                              {isSecuredAdmin ? '••••••••' : emp.birthDate.split('-').reverse().join('/')}
+                            </span>
                           </div>
                         )}
                       </div>
