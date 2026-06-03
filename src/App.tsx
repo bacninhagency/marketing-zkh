@@ -765,7 +765,7 @@ export default function App() {
                 }`}
                 id="tab_btn_standardize"
               >
-                <GitBranch className="w-4 h-4" /> Đồng bộ GitHub
+                <GitBranch className="w-4 h-4" /> Chuẩn hóa & Xuất bản
               </button>
             </nav>
 
