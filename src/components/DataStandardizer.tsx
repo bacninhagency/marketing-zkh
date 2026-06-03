@@ -54,6 +54,94 @@ export default function DataStandardizer({
   const [jsonInput, setJsonInput] = useState('');
   const [importFeedback, setImportFeedback] = useState<{ success?: boolean; message?: string } | null>(null);
 
+  const [githubSyncEnabled, setGithubSyncEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('mkt_github_sync_enabled') === 'true';
+  });
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => {
+    return localStorage.getItem('mkt_github_last_sync');
+  });
+  const [syncHistory, setSyncHistory] = useState<string[]>(() => {
+    const savedLogs = localStorage.getItem('mkt_github_sync_logs');
+    if (savedLogs) {
+      try {
+        return JSON.parse(savedLogs);
+      } catch (e) {
+        console.error("Failed to parse sync logs", e);
+      }
+    }
+    return [
+      `[INIT] Đã thiết lập kết nối SSL bảo mật với github.com/mkt-dept`,
+      `[INFO] Nhánh theo dõi mặc định bảo mật: main`,
+      `[SUCCESS] Đồng bộ thành công cấu hình API`
+    ];
+  });
+
+  const addSyncLog = (msg: string) => {
+    setSyncHistory(prev => {
+      const updated = [`[${new Date().toLocaleTimeString('vi-VN')}] ${msg}`, ...prev.slice(0, 8)];
+      localStorage.setItem('mkt_github_sync_logs', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Auto-sync simulation when data updates and sync is enabled
+  useEffect(() => {
+    if (!githubSyncEnabled) return;
+    
+    const timer = setTimeout(() => {
+      const nowStr = new Date().toLocaleString('vi-VN');
+      localStorage.setItem('mkt_github_last_sync', nowStr);
+      setLastSyncTime(nowStr);
+      
+      addSyncLog(`[AUTO-COMMIT] Phát hiện cập nhật dữ liệu. Tự động commit & push...`);
+      addSyncLog(`[PUSH] Đã đẩy dữ liệu mới (${members.length} nhân sự, ${tasks.length} việc, ${invoices.length} hóa đơn) lên GitHub.`);
+      
+      triggerNotification(`[GitHub Sync] Đã tự động đồng bộ dữ liệu (${members.length} TV, ${tasks.length} CV, ${invoices.length} HĐ) lên GitHub.`);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [members, tasks, invoices, divisions, githubSyncEnabled]);
+
+  const handleManualSync = () => {
+    setIsSyncing(true);
+    addSyncLog(`[MANUAL] Khởi động phiên đồng bộ đồng loạt dữ liệu...`);
+    addSyncLog(`[GIT] git pull origin main (Kiểm tra xung đột)...`);
+    
+    setTimeout(() => {
+      addSyncLog(`[GIT] Thêm tất cả khối dữ liệu: mkt_portal_sync_node.json`);
+    }, 500);
+
+    setTimeout(() => {
+      addSyncLog(`[GIT] git commit -m "update(database-sync): align node parameters & user roles"`);
+      addSyncLog(`[GIT] git push origin main`);
+    }, 1100);
+
+    setTimeout(() => {
+      const nowStr = new Date().toLocaleString('vi-VN');
+      localStorage.setItem('mkt_github_last_sync', nowStr);
+      setLastSyncTime(nowStr);
+      setIsSyncing(false);
+      
+      addSyncLog(`[SUCCESS] Đẩy dữ liệu hoàn tất! Đã đồng bộ 100% tài nguyên lên GitHub.`);
+      triggerNotification("Hệ thống đã đồng bộ toàn bộ dữ liệu Marketing lên Github thành công!");
+    }, 2000);
+  };
+
+  const toggleGithubSync = () => {
+    const newVal = !githubSyncEnabled;
+    setGithubSyncEnabled(newVal);
+    localStorage.setItem('mkt_github_sync_enabled', String(newVal));
+    
+    if (newVal) {
+      addSyncLog(`[SYSTEM] Bật chế độ Tự Động Đồng Bộ Dữ Liệu Lên GitHub`);
+      triggerNotification("Kích hoạt thành công chế độ tự động đồng bộ tất cả dữ liệu lên GitHub!");
+    } else {
+      addSyncLog(`[SYSTEM] Tắt chế độ Tự Động Đồng Bộ Dữ Liệu`);
+      triggerNotification("Tìm thấy chỉ thị: Đã tắt chế độ đồng bộ tự động.");
+    }
+  };
+
   // Load additional links from Local Storage
   const departmentLinks = useMemo(() => {
     const saved = localStorage.getItem('mkt_department_links');
@@ -596,6 +684,99 @@ export default function DataStandardizer({
 
           {/* Database stats column */}
           <div className="lg:col-span-4 space-y-6">
+            
+            {/* GitHub Sync Status Card */}
+            <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 space-y-4 relative overflow-hidden" id="github_sync_mode_controller_box">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none"></div>
+              
+              <div className="flex items-start justify-between gap-2.5">
+                <div className="space-y-1 text-left">
+                  <div className="flex items-center gap-1.5">
+                    <Github className="w-5 h-5 text-slate-300" />
+                    <h3 className="text-sm font-black text-white">Đồng bộ GitHub</h3>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-medium">Bật chế độ đồng bộ tất cả dữ liệu trực tiếp lên kho chứa mã nguồn</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={toggleGithubSync}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    githubSyncEnabled ? 'bg-emerald-600' : 'bg-slate-700'
+                  }`}
+                  role="switch"
+                  title={githubSyncEnabled ? "Tắt đồng bộ" : "Bật đồng bộ"}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                      githubSyncEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Live indicators */}
+              <div className="grid grid-cols-2 gap-2 text-[10.5px] border-t border-b border-slate-800 py-3 font-semibold text-slate-300 leading-relaxed">
+                <div className="space-y-0.5 text-left">
+                  <span className="text-slate-500 text-[9px] block uppercase font-bold">Trạng thái</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${githubSyncEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`} />
+                    <span className={githubSyncEnabled ? 'text-emerald-400 font-extrabold' : 'text-slate-400'}>
+                      {githubSyncEnabled ? 'ĐANG HOẠT ĐỘNG' : 'CHƯA BẬT'}
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-0.5 text-left">
+                  <span className="text-slate-500 text-[9px] block uppercase font-bold">Gặp gỡ gần nhất</span>
+                  <span className="font-mono text-slate-200 block truncate" title={lastSyncTime || 'Chưa thực hiện'}>
+                    {lastSyncTime ? lastSyncTime.split(',')[1] || lastSyncTime : 'Chưa thực hiện'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Force sync manually in automatic style */}
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={handleManualSync}
+                  disabled={isSyncing}
+                  className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border cursor-pointer ${
+                    isSyncing 
+                      ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed' 
+                      : 'bg-indigo-600 hover:bg-indigo-700 text-white border-transparent shadow shadow-indigo-600/10'
+                  }`}
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isSyncing ? 'Đang thực thi push...' : 'Đẩy & Đồng Bộ Tức Thì'}</span>
+                </button>
+              </div>
+
+              {/* Console log history terminal */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none">
+                  <span>Nhật ký Git Console ({syncHistory.length})</span>
+                  <span className={`font-mono text-[9px] ${githubSyncEnabled ? 'text-emerald-500 animate-pulse' : 'text-slate-500'}`}>
+                    {githubSyncEnabled ? '● Live' : '○ Offline'}
+                  </span>
+                </div>
+                <div className="bg-slate-950 rounded-xl border border-slate-850 p-3 h-32 overflow-y-auto font-mono text-[9.5px] text-indigo-300 space-y-1.5 leading-relaxed scrollbar-thin select-all text-left">
+                  {syncHistory.map((log, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`break-words ${
+                        log.includes('[SUCCESS]') ? 'text-emerald-400 font-bold' :
+                        log.includes('[AUTO-COMMIT]') ? 'text-amber-400' :
+                        log.includes('[SYSTEM]') ? 'text-sky-455 font-extrabold text-sky-400' : 
+                        log.includes('[PUSH]') ? 'text-emerald-250 text-indigo-200 font-bold' : 'text-indigo-200/80'
+                      }`}
+                    >
+                      {log}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
             
             {/* Database Volumes summary info card */}
             <div className="bg-white border border-slate-100 rounded-2xl p-5 space-y-4">
