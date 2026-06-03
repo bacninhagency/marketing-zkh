@@ -26,9 +26,37 @@ import {
   Plus,
   Check,
   CheckSquare,
-  Key
+  Key,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Member, Task, MarketingDivision, SystemRole, RolePermissions } from '../types';
+
+function SecurePasswordText({ value }: { value: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="inline-flex items-center gap-1.5 font-sans">
+      <span className="font-mono font-bold select-all min-w-[34px]">
+        {show ? value : '••••••'}
+      </span>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setShow(!show);
+        }}
+        className="p-0.5 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded transition cursor-pointer"
+        title={show ? "Ẩn mật khẩu" : "Hiển thị mật khẩu"}
+      >
+        {show ? (
+          <EyeOff className="w-3.5 h-3.5" />
+        ) : (
+          <Eye className="w-3.5 h-3.5" />
+        )}
+      </button>
+    </span>
+  );
+}
 
 const PRESET_AVATARS = [
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', // Female 1
@@ -150,6 +178,7 @@ export default function TeamPerformance({
   const [newMemberPhone, setNewMemberPhone] = useState('');
   const [newMemberBirthDate, setNewMemberBirthDate] = useState('');
   const [newMemberAvatar, setNewMemberAvatar] = useState(PRESET_AVATARS[0]);
+  const [showNewMemberPassword, setShowNewMemberPassword] = useState(false);
 
   // Edit member states
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -158,6 +187,7 @@ export default function TeamPerformance({
   const [editMemberRole, setEditMemberRole] = useState('');
   const [editMemberEmail, setEditMemberEmail] = useState('');
   const [editMemberPassword, setEditMemberPassword] = useState('123');
+  const [showEditMemberPassword, setShowEditMemberPassword] = useState(false);
   const [editMemberDivision, setEditMemberDivision] = useState<MarketingDivision>('Content');
   const [editMemberEfficiency, setEditMemberEfficiency] = useState(85);
   const [editMemberSystemRole, setEditMemberSystemRole] = useState<SystemRole>('Member');
@@ -688,9 +718,9 @@ export default function TeamPerformance({
                             <div className="space-y-1 text-left">
                               <span className="block font-medium text-slate-805">{emp.email}</span>
                               <div className="text-[10px] text-slate-400 font-sans space-y-0.5 mt-1 font-medium">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1 rounded font-bold font-sans">Mật khẩu:</span> 
-                                  <span className="font-mono text-indigo-950 font-bold select-all bg-indigo-50/20 px-1 py-0.2 rounded border border-indigo-100/30">{emp.password || '123'}</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[9px] bg-indigo-50 text-indigo-700 px-1 rounded font-bold font-sans pb-0.5">Mật khẩu:</span> 
+                                  <SecurePasswordText value={emp.password || '123'} />
                                 </div>
                                 {emp.phone && <div className="flex items-center gap-1 font-mono pt-0.5">SĐT: {emp.phone}</div>}
                                 {emp.birthDate && <div className="flex items-center gap-1 font-mono">NS: {emp.birthDate.split('-').reverse().join('/')}</div>}
@@ -877,9 +907,12 @@ export default function TeamPerformance({
                          <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                          <span className="truncate text-[10.5px] font-mono">{emp.email}</span>
                        </div>
-                       <div className="flex gap-1.5 items-center bg-indigo-50/50 px-2 py-1.5 rounded-xl border border-indigo-100/30 text-indigo-950 font-semibold">
-                         <Key className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                         <span className="font-mono text-[10.5px] truncate">Pass: <strong className="text-indigo-700 font-black select-all bg-white px-1 py-0.2 rounded border border-indigo-100">{emp.password || '123'}</strong></span>
+                       <div className="flex gap-1.5 items-center bg-indigo-50/50 px-2 py-1.5 rounded-xl border border-indigo-100/30 text-indigo-950 font-semibold justify-between">
+                         <div className="flex gap-1.5 items-center">
+                           <Key className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                           <span className="text-[10.5px]">Pass:</span>
+                         </div>
+                         <SecurePasswordText value={emp.password || '123'} />
                        </div>
                      </div>
 
@@ -1085,14 +1118,24 @@ export default function TeamPerformance({
                 </div>
                 <div className="space-y-1">
                   <label className="text-slate-700 font-semibold block">Mật khẩu Đăng nhập</label>
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="Mật khẩu tài khoản (Mặc định: 123)"
-                    value={newMemberPassword} 
-                    onChange={(e) => setNewMemberPassword(e.target.value)}
-                    className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-950 placeholder-slate-400"
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showNewMemberPassword ? "text" : "password"} 
+                      required
+                      placeholder="Mật khẩu tài khoản (Mặc định: 123)"
+                      value={newMemberPassword} 
+                      onChange={(e) => setNewMemberPassword(e.target.value)}
+                      className="w-full text-xs p-3 pr-10 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-950 placeholder-slate-400 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewMemberPassword(!showNewMemberPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition cursor-pointer p-1"
+                      title={showNewMemberPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    >
+                      {showNewMemberPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1433,14 +1476,24 @@ export default function TeamPerformance({
                 </div>
                 <div className="space-y-1">
                   <label className="text-slate-700 font-semibold block">Mật khẩu Đăng nhập</label>
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="Mật khẩu tài khoản (Mặc định: 123)"
-                    value={editMemberPassword} 
-                    onChange={(e) => setEditMemberPassword(e.target.value)}
-                    className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-950 placeholder-slate-400"
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showEditMemberPassword ? "text" : "password"} 
+                      required
+                      placeholder="Mật khẩu tài khoản (Mặc định: 123)"
+                      value={editMemberPassword} 
+                      onChange={(e) => setEditMemberPassword(e.target.value)}
+                      className="w-full text-xs p-3 pr-10 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-slate-950 placeholder-slate-400 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEditMemberPassword(!showEditMemberPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition cursor-pointer p-1"
+                      title={showEditMemberPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                    >
+                      {showEditMemberPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 

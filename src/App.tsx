@@ -668,7 +668,7 @@ export default function App() {
                   <img src={m.avatar} alt={m.name} className="w-8 h-8 rounded-full object-cover shrink-0 border border-slate-800" referrerPolicy="no-referrer" />
                   <div className="overflow-hidden">
                     <span className="text-[11px] font-bold text-slate-200 block truncate">{m.name}</span>
-                    <span className="text-[9px] text-slate-400 block truncate font-mono uppercase font-bold tracking-tight text-indigo-400">{m.systemRole} (pw: {m.password || '123'})</span>
+                    <span className="text-[9px] text-slate-400 block truncate font-mono uppercase font-bold tracking-tight text-indigo-400">{m.systemRole} (Mật khẩu ẩn)</span>
                   </div>
                 </button>
               ))}
