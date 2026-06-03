@@ -20,7 +20,8 @@ import {
   Moon,
   Sun,
   ShieldCheck,
-  Link2
+  Link2,
+  GitBranch
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
@@ -33,6 +34,7 @@ import TaskManager from './components/TaskManager';
 import TeamPerformance from './components/TeamPerformance';
 import PermissionsManager from './components/PermissionsManager';
 import InternalAdminLinks from './components/InternalAdminLinks';
+import DataStandardizer from './components/DataStandardizer';
 
 const DEFAULT_ROLE_PERMISSIONS: Record<SystemRole, RolePermissions> = {
   Admin: {
@@ -603,6 +605,15 @@ export default function App() {
               >
                 <Link2 className="w-4 h-4" /> Liên kết bộ phận
               </button>
+              <button 
+                onClick={() => setActiveTab('standardize')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl transition ${
+                  activeTab === 'standardize' ? 'bg-indigo-50 text-indigo-700 font-extrabold' : 'hover:bg-slate-50 text-slate-650'
+                }`}
+                id="tab_btn_standardize"
+              >
+                <GitBranch className="w-4 h-4" /> Đồng bộ GitHub
+              </button>
             </nav>
 
             {/* Right Quick Header User Controls */}
@@ -689,8 +700,8 @@ export default function App() {
                               <div
                                 key={notif.id}
                                 onClick={() => handleMarkNotificationAsRead(notif.id)}
-                                className={`p-3.5 hover:bg-slate-50/80 transition duration-150 cursor-pointer text-left relative flex items-start gap-2.5 ${
-                                  isUnread ? 'bg-indigo-50/20' : ''
+                                className={`p-3.5 hover:bg-slate-50/90 hover:scale-[1.01] active:scale-[0.99] hover:shadow-[0_2px_8px_rgba(99,102,241,0.05)] transition-all transform duration-200 ease-out cursor-pointer text-left relative flex items-start gap-2.5 ${
+                                  isUnread ? 'bg-indigo-50/25 border-l-2 border-indigo-500' : 'border-l-2 border-transparent'
                                 }`}
                                 id={`notif_item_${notif.id}`}
                               >
@@ -813,6 +824,15 @@ export default function App() {
         >
           🔗 Liên kết
         </button>
+        <button
+          onClick={() => setActiveTab('standardize')}
+          className={`px-3.5 py-2 rounded-xl transition-all ${
+            activeTab === 'standardize' ? 'bg-indigo-600 text-white font-bold shadow-xs' : 'text-slate-600 bg-slate-50'
+          }`}
+          id="mobile_tab_btn_standardize"
+        >
+          ⚙️ Chuẩn hóa & Git
+        </button>
       </div>
 
       {/* Main Container Layout */}
@@ -890,6 +910,21 @@ export default function App() {
                 divisions={divisions}
                 members={members}
                 currentUser={currentUser}
+              />
+            )}
+
+            {activeTab === 'standardize' && (
+              <DataStandardizer
+                members={members}
+                tasks={tasks}
+                invoices={invoices}
+                divisions={divisions}
+                currentUser={currentUser}
+                onUpdateMembers={saveMembers}
+                onUpdateTasks={saveTasks}
+                onUpdateInvoices={saveInvoices}
+                onUpdateDivisions={saveDivisions}
+                triggerNotification={triggerNotification}
               />
             )}
           </motion.div>
